@@ -44,5 +44,5 @@ else:
 userPrefer = filterByFileName(input_remaining, 'UP')
 RRequest = filterByFileName(input_remaining, 'RR')
 
-handleRR(RRequest, cwd, getFileNameFromPath)
+# handleRR(RRequest, cwd, getFileNameFromPath)
 handleUP(userPrefer, cwd, getFileNameFromPath)

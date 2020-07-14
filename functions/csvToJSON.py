@@ -6,9 +6,8 @@ from .moveFile import moveFile
 
 
 def csvToJSON(paths, fieldnames):
+    jsonData = []
     for rawCSVPath in paths:
-        jsonData = []
-
         with open(rawCSVPath) as csvFile:
             csvReader = csv.DictReader(
                 csvFile, fieldnames=fieldnames)
