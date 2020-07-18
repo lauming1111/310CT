@@ -4,6 +4,7 @@ const path = require('path')
 const _ = require('lodash')
 const { parseAsync } = require('json2csv')
 const Recommender = require('likely')
+const Promise = require("bluebird");
 
 const config = {
   input: path.join(__dirname, "input"),
@@ -50,10 +51,15 @@ const mergeJSON = async (model, json) => {
 const main = async () => {
   try {
     const rr = await readdir(config.input)
-      .then(r => r.filter(r => r.startsWith('RR')))
+      .then(r => r.filter(r => r.startsWith('RR') && r.endsWith('.csv')))
     const up = await readdir(config.input)
-      .then(r => r.filter(r => r.startsWith('UP')))
+      .then(r => r.filter(r => r.startsWith('UP') && r.endsWith('csv')))
 
+    if (rr.length > 0 || up.length > 0) {
+      log.info('Processing next batch of data')
+      log.info(`rr ${rr}`)
+      log.info(`up ${up}`)
+    }
     const modelJSON = await csv({
       noheader: true,
       delimiter: ',',
@@ -61,7 +67,6 @@ const main = async () => {
     })
       .fromFile(config.model)
 
-    // console.log(modelJSON)
     for (const up_csv of up) {
       log.info('handling user perfer')
       const csvJSON = await csv({
@@ -80,18 +85,19 @@ const main = async () => {
         })
 
 
-      return fs.rename(path.join(config.input, up_csv), path.join(config.processed, up_csv), { recursive: true })
+      await fs.rename(path.join(config.input, up_csv), path.join(config.processed, up_csv), { recursive: true })
         .then(() => log.info('End of handling.'))
     }
 
+    const newModelJSON = await csv({
+      noheader: true,
+      delimiter: ',',
+      headers: ["userID", "itemID", "score"]
+    })
+      .fromFile(config.model)
+
     for (const rr_csv of rr) {
       log.info('handling user request')
-      const modelJSON = await csv({
-        noheader: true,
-        delimiter: ',',
-        headers: ["userID", "itemID", "score"]
-      })
-        .fromFile(config.model)
 
       const requests = await csv({
         noheader: true,
@@ -101,14 +107,14 @@ const main = async () => {
         .fromFile(path.join(__dirname, "input", rr_csv))
 
       for (const request of requests) {
-        var rowLabels = [...new Set(modelJSON.map(r => r.userID))].sort()
-        var colLabels = [...new Set(modelJSON.map(r => r.itemID))].sort()
+        var rowLabels = [...new Set(newModelJSON.map(r => r.userID))].sort()
+        var colLabels = [...new Set(newModelJSON.map(r => r.itemID))].sort()
         var matrix = Array(rowLabels.length).fill().map(() => Array(colLabels.length).fill(0))
 
         // transform json to json matrix
         rowLabels.forEach((r, rindex) => {
           colLabels.forEach((rrrr, rrrrrindex) => {
-            modelJSON.filter(rr => rr.userID === r && rr.itemID === rrrr)
+            newModelJSON.filter(rr => rr.userID === r && rr.itemID === rrrr)
               .forEach((rr, rrindex) => {
                 matrix[rindex][rrrrrindex] = rr.score
               })
@@ -142,9 +148,16 @@ const main = async () => {
   } catch (e) {
     throw e
   }
+
+  await Promise.delay(1000)
+  await main()
 }
 
 main()
+  .then(async () => {
+
+  })
   .catch(e => {
-    console.log(e)
+    main()
+    console.error(e)
   })
