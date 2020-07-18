@@ -51,9 +51,9 @@ const mergeJSON = async (model, json) => {
 const main = async () => {
   try {
     const rr = await readdir(config.input)
-      .then(r => r.filter(r => r.startsWith('RR') && r.endsWith('.csv')))
+      .then(r => r.filter(r => r.startsWith('RR') && r.endsWith('.csv')).sort())
     const up = await readdir(config.input)
-      .then(r => r.filter(r => r.startsWith('UP') && r.endsWith('csv')))
+      .then(r => r.filter(r => r.startsWith('UP') && r.endsWith('csv')).sort())
 
     if (rr.length > 0 || up.length > 0) {
       log.info('Processing next batch of data')
@@ -140,7 +140,8 @@ const main = async () => {
             return fs.writeFile(path.join(config.output, rr_csv), r)
           })
           .then(() => {
-            return fs.unlink(path.join(config.input, rr_csv))
+            return fs.rename(path.join(config.input, rr_csv), path.join(config.processed, rr_csv), { recursive: true })
+              .then(() => log.info('End of handling.'))
           })
       }
     }
